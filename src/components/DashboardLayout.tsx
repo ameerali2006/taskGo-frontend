@@ -27,9 +27,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   const menuItems = [
     { name: "Dashboard", path: "/tasks", icon: LayoutDashboard },
-    { name: "Tasks", path: "/tasks", icon: CheckSquare },
+    // { name: "Tasks", path: "/tasks", icon: CheckSquare },
     { name: "Analytics", path: "/tasks", icon: LineChart },
-    { name: "Settings", path: "/tasks", icon: Settings },
+    // { name: "Settings", path: "/tasks", icon: Settings },
   ];
 
   const handleLogout = async () => {

@@ -21,26 +21,13 @@ import {
   ArrowUpDown,
   Filter
 } from "lucide-react";
+import { TaskService } from "../services/task.service";
+import type { Task } from "../services/task.service";
 import toast from "react-hot-toast";
-
-interface Task {
-  id: string;
-  title: string;
-  priority: "Low" | "Medium" | "High";
-  status: "Todo" | "In Progress" | "Completed";
-  dueDate: string;
-}
-
-const INITIAL_TASKS: Task[] = [
-  { id: "1", title: "Redesign landing page layout", priority: "High", status: "In Progress", dueDate: "2026-07-20" },
-  { id: "2", title: "Setup Mongoose database connections", priority: "High", status: "Completed", dueDate: "2026-07-16" },
-  { id: "3", title: "Add authentication unit tests", priority: "Medium", status: "Todo", dueDate: "2026-07-25" },
-  { id: "4", title: "Configure production Vite builds", priority: "Low", status: "Todo", dueDate: "2026-07-30" },
-];
 
 export const Tasks: React.FC = () => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Search, Filters & Sort State
@@ -60,12 +47,23 @@ export const Tasks: React.FC = () => {
   const [formStatus, setFormStatus] = useState<"Todo" | "In Progress" | "Completed">("Todo");
   const [formDueDate, setFormDueDate] = useState("");
 
-  // Skeleton shimmer preview
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const loadTasks = async () => {
+    try {
+      const response = await TaskService.getTasks();
+      if (response.success && response.data) {
+        setTasks(response.data);
+      } else {
+        toast.error(response.message || "Failed to load tasks");
+      }
+    } catch (error: any) {
+      console.error("Failed to load tasks", error);
+    } finally {
       setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
   }, []);
 
   const openCreateModal = () => {
@@ -86,7 +84,7 @@ export const Tasks: React.FC = () => {
   };
 
   // Create handler
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) {
       toast.error("Task title is required");
@@ -97,21 +95,30 @@ export const Tasks: React.FC = () => {
       return;
     }
 
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: formTitle.trim(),
-      priority: formPriority,
-      status: formStatus,
-      dueDate: formDueDate,
-    };
+    try {
+      const response = await TaskService.createTask({
+        title: formTitle.trim(),
+        priority: formPriority,
+        status: formStatus,
+        dueDate: formDueDate,
+        description: "",
+      } as any);
 
-    setTasks([newTask, ...tasks]);
-    setIsCreateOpen(false);
-    toast.success("Task created successfully!");
+      if (response.success) {
+        setIsCreateOpen(false);
+        toast.success("Task created successfully!");
+        loadTasks();
+      } else {
+        toast.error(response.message || "Failed to create task");
+      }
+    } catch (error: any) {
+      console.log(error)
+      toast.error("Failed to save task to server");
+    }
   };
 
   // Edit handler
-  const handleEditTask = (e: React.FormEvent) => {
+  const handleEditTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTask) return;
     if (!formTitle.trim()) {
@@ -123,34 +130,57 @@ export const Tasks: React.FC = () => {
       return;
     }
 
-    const updatedTasks = tasks.map((task) =>
-      task.id === currentTask.id
-        ? { ...task, title: formTitle.trim(), priority: formPriority, status: formStatus, dueDate: formDueDate }
-        : task
-    );
+    try {
+      const response = await TaskService.updateTask(currentTask.id, {
+        title: formTitle.trim(),
+        priority: formPriority,
+        status: formStatus,
+        dueDate: formDueDate,
+      });
 
-    setTasks(updatedTasks);
-    setIsEditOpen(false);
-    toast.success("Task updated successfully!");
+      if (response.success) {
+        setIsEditOpen(false);
+        toast.success("Task updated successfully!");
+        loadTasks();
+      } else {
+        toast.error(response.message || "Failed to update task");
+      }
+    } catch (error: any) {
+      toast.error("Failed to save changes to server");
+    }
   };
 
   // Delete handler
-  const handleDeleteTask = (id: string) => {
+  const handleDeleteTask = async (id: string) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this task?");
-    if (confirmDelete) {
-      setTasks(tasks.filter((task) => task.id !== id));
-      toast.success("Task deleted successfully");
+    if (!confirmDelete) return;
+
+    try {
+      const response = await TaskService.deleteTask(id);
+      if (response.success) {
+        toast.success("Task deleted successfully");
+        loadTasks();
+      } else {
+        toast.error(response.message || "Failed to delete task");
+      }
+    } catch (error: any) {
+      toast.error("Failed to delete task on server");
     }
   };
 
   // Complete handler
-  const handleCompleteTask = (id: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, status: "Completed" as const } : task
-      )
-    );
-    toast.success("Task marked as completed! 🎉");
+  const handleCompleteTask = async (id: string) => {
+    try {
+      const response = await TaskService.updateTask(id, { status: "Completed" });
+      if (response.success) {
+        toast.success("Task marked as completed! 🎉");
+        loadTasks();
+      } else {
+        toast.error(response.message || "Failed to complete task");
+      }
+    } catch (error: any) {
+      toast.error("Failed to complete task on server");
+    }
   };
 
   // Statistics calculation

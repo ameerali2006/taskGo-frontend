@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
 import { AuthProvider } from "./context/AuthContext";
 import { Signup } from "./pages/Signup";
 import { Login } from "./pages/Login";
@@ -10,7 +12,8 @@ import "./App.css";
 
 function App() {
   return (
-    <AuthProvider>
+    <Provider store={store}>
+      <AuthProvider>
       <Router>
         <Routes>
           {/* Public authentication routes */}
@@ -49,7 +52,8 @@ function App() {
           },
         }}
       />
-    </AuthProvider>
+      </AuthProvider>
+    </Provider>
   );
 }
 

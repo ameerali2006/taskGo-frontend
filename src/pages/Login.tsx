@@ -39,10 +39,12 @@ export const Login: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     try {
-      await login(data);
+      const res=await login(data);
+      console.log(res)
       toast.success("Welcome back!");
       navigate("/tasks");
     } catch (error: any) {
+      console.log(error)
       toast.error(error.message || "Invalid credentials. Please try again.");
     } finally {
       setIsSubmitting(false);
