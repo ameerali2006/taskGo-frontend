@@ -8,6 +8,7 @@ export const apiRoutes = {
   },
   tasks: {
     base: "/tasks",
+    analytics: "/tasks/analytics",
     byId: (id: string) => `/tasks/${id}`,
   },
 };

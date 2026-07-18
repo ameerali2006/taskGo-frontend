@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { DashboardLayout } from "../components/DashboardLayout";
-import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { Input } from "../components/Input";
-import { CardSkeleton, TableSkeleton } from "../components/Skeleton";
-import { useAuth } from "../context/AuthContext";
+import { TableSkeleton } from "../components/Skeleton";
 import {
   Plus,
   Search,
@@ -13,23 +11,18 @@ import {
   Trash2,
   CheckCircle,
   Calendar,
-  AlertTriangle,
-  ClipboardList,
-  CheckSquare,
-  Clock,
   Inbox,
   ArrowUpDown,
-  Filter
+  Filter,
 } from "lucide-react";
 import { TaskService } from "../services/task.service";
 import type { Task } from "../services/task.service";
 import toast from "react-hot-toast";
 
 export const Tasks: React.FC = () => {
-  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Search, Filters & Sort State
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -49,6 +42,7 @@ export const Tasks: React.FC = () => {
 
   const loadTasks = async () => {
     try {
+      setLoading(true);
       const response = await TaskService.getTasks();
       if (response.success && response.data) {
         setTasks(response.data);
@@ -112,7 +106,7 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to create task");
       }
     } catch (error: any) {
-      console.log(error)
+      console.log(error);
       toast.error("Failed to save task to server");
     }
   };
@@ -183,15 +177,6 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  // Statistics calculation
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-  const pendingTasks = tasks.filter((t) => t.status !== "Completed").length;
-  const overdueTasks = tasks.filter((t) => {
-    const isPastDue = new Date(t.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
-    return isPastDue && t.status !== "Completed";
-  }).length;
-
   // Filter & Sort Logic
   const filteredTasks = tasks
     .filter((task) => {
@@ -218,13 +203,11 @@ export const Tasks: React.FC = () => {
 
   return (
     <DashboardLayout>
-      {/* 3. Dashboard Header (Title Left, Add Button Right) */}
+      {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full text-left">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight m-0">Dashboard</h1>
-          <p className="text-sm text-slate-500 m-0">
-            Welcome back, <span className="text-slate-800 font-semibold">{user?.name || "User"}</span>. Here is your workspace summary.
-          </p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight m-0">Tasks</h1>
+          <p className="text-sm text-slate-500 m-0">Manage all your tasks.</p>
         </div>
         <Button onClick={openCreateModal} className="sm:w-auto shrink-0 self-start">
           <Plus className="w-4.5 h-4.5" />
@@ -232,83 +215,9 @@ export const Tasks: React.FC = () => {
         </Button>
       </div>
 
-      {/* 4. Statistics Grid (4 Cards, Hover Animations) */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-          {/* Total tasks */}
-          <Card animateHover className="relative overflow-hidden group border border-slate-200">
-            <div className="absolute right-0 top-0 w-24 h-24 bg-blue-500/5 rounded-bl-full group-hover:bg-blue-500/10 transition-colors" />
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Tasks</span>
-                <span className="text-3xl font-bold text-slate-900 mt-1 leading-none">{totalTasks}</span>
-                <span className="text-[11px] text-slate-400 mt-2 font-medium">All registered project tasks</span>
-              </div>
-              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shadow-sm">
-                <ClipboardList className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Completed tasks */}
-          <Card animateHover className="relative overflow-hidden group border border-slate-200">
-            <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full group-hover:bg-emerald-500/10 transition-colors" />
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Completed</span>
-                <span className="text-3xl font-bold text-slate-900 mt-1 leading-none">{completedTasks}</span>
-                <span className="text-[11px] text-slate-400 mt-2 font-medium">
-                  {totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}% completion rate` : "No tasks added"}
-                </span>
-              </div>
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 shadow-sm">
-                <CheckSquare className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Pending tasks */}
-          <Card animateHover className="relative overflow-hidden group border border-slate-200">
-            <div className="absolute right-0 top-0 w-24 h-24 bg-amber-500/5 rounded-bl-full group-hover:bg-amber-500/10 transition-colors" />
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending</span>
-                <span className="text-3xl font-bold text-slate-900 mt-1 leading-none">{pendingTasks}</span>
-                <span className="text-[11px] text-slate-400 mt-2 font-medium">Require execution priority</span>
-              </div>
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shadow-sm">
-                <Clock className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Overdue tasks */}
-          <Card animateHover className="relative overflow-hidden group border border-slate-200">
-            <div className="absolute right-0 top-0 w-24 h-24 bg-red-500/5 rounded-bl-full group-hover:bg-red-500/10 transition-colors" />
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Overdue</span>
-                <span className="text-3xl font-bold text-slate-900 mt-1 leading-none">{overdueTasks}</span>
-                <span className="text-[11px] text-slate-400 mt-2 font-medium">Past designated deadline</span>
-              </div>
-              <div className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 shadow-sm">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* 5. Toolbar Section */}
+      {/* 2. Toolbar Section */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 w-full shadow-sm">
-        {/* Left: Search input */}
+        {/* Search input */}
         <div className="flex-grow flex items-center relative max-w-md w-full">
           <Search className="absolute left-3.5 h-4.5 w-4.5 text-slate-400 pointer-events-none" />
           <input
@@ -320,7 +229,7 @@ export const Tasks: React.FC = () => {
           />
         </div>
 
-        {/* Right: Filters & Sort Dropdowns */}
+        {/* Filters & Sort */}
         <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
           {/* Status Filter */}
           <div className="flex items-center gap-1 border border-slate-200 rounded-xl bg-slate-50 p-1">
@@ -365,42 +274,33 @@ export const Tasks: React.FC = () => {
               <option value="title-desc">Title (Z-A)</option>
             </select>
           </div>
-
-          {/* Add Task Quick Button */}
-          <button
-            onClick={openCreateModal}
-            className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Task</span>
-          </button>
         </div>
       </div>
 
-      {/* 6. Tasks Table & Responsive Mobile Cards */}
+      {/* 3. Task Table & Responsive View */}
       {loading ? (
         <TableSkeleton />
       ) : filteredTasks.length === 0 ? (
-        /* 7. Empty State Layout */
+        /* Empty State Layout */
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center gap-4 w-full shadow-sm">
           <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
-            <Inbox className="w-8 h-8" />
+            <Inbox className="w-8 h-8 text-slate-400" />
           </div>
           <div className="max-w-xs">
-            <h3 className="text-lg font-bold text-slate-900 m-0">No tasks found</h3>
+            <h3 className="text-lg font-bold text-slate-900 m-0">No Tasks Yet</h3>
             <p className="text-slate-500 text-sm mt-1 leading-relaxed">
-              Create your first task to begin tracking your team deliverables and project tasks.
+              Create your first task to start organizing your work efficiently.
             </p>
           </div>
           <Button onClick={openCreateModal} className="w-auto mt-2">
             <Plus className="w-4 h-4" />
-            <span>Create Task</span>
+            <span>Create First Task</span>
           </Button>
         </div>
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-lg w-full max-h-[600px] overflow-y-auto">
+          <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-lg w-full max-h-[650px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="sticky top-0 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider z-10">
@@ -418,20 +318,28 @@ export const Tasks: React.FC = () => {
                       {task.title}
                     </td>
                     <td className="py-4.5 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
-                        task.priority === "High" ? "bg-red-50 text-red-700 border-red-200" :
-                        task.priority === "Medium" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                        "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          task.priority === "High"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : task.priority === "Medium"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
                         {task.priority}
                       </span>
                     </td>
                     <td className="py-4.5 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
-                        task.status === "Completed" ? "bg-green-50 text-green-700 border-green-200" :
-                        task.status === "In Progress" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                        "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          task.status === "Completed"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : task.status === "In Progress"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
                         {task.status}
                       </span>
                     </td>
@@ -474,58 +382,74 @@ export const Tasks: React.FC = () => {
             </table>
           </div>
 
-          {/* 8. Mobile Card-List View */}
+          {/* Mobile Card List View */}
           <div className="grid grid-cols-1 gap-4 md:hidden w-full">
             {filteredTasks.map((task) => (
-              <Card key={task.id} className="flex flex-col gap-4 border border-slate-200 shadow-lg p-5">
-                <div className="flex justify-between items-start gap-4">
-                  <h4 className="font-bold text-slate-800 leading-snug m-0 text-base">{task.title}</h4>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openEditModal(task)}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer border-none bg-transparent"
-                    >
-                      <Edit2 className="w-4.5 h-4.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer border-none bg-transparent"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                    task.priority === "High" ? "bg-red-50 text-red-700 border-red-200" :
-                    task.priority === "Medium" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                    "bg-blue-50 text-blue-700 border-blue-200"
-                  }`}>
+              <div
+                key={task.id}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4 text-left"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-base font-bold text-slate-900 m-0 leading-snug">
+                    {task.title}
+                  </h4>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${
+                      task.priority === "High"
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : task.priority === "Medium"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
                     {task.priority}
                   </span>
+                </div>
 
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                    task.status === "Completed" ? "bg-green-50 text-green-700 border-green-200" :
-                    task.status === "In Progress" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                    "bg-blue-50 text-blue-700 border-blue-200"
-                  }`}>
+                <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
+                      task.status === "Completed"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : task.status === "In Progress"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
                     {task.status}
                   </span>
-
-                  <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="flex items-center gap-1 text-slate-400 font-semibold">
+                    <Calendar className="w-3.5 h-3.5" />
                     <span>{task.dueDate}</span>
                   </div>
                 </div>
 
-                {task.status !== "Completed" && (
-                  <Button variant="success" onClick={() => handleCompleteTask(task.id)} className="w-full h-11">
-                    <CheckCircle className="w-4.5 h-4.5" />
-                    <span>Complete Task</span>
-                  </Button>
-                )}
-              </Card>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                  {task.status !== "Completed" && (
+                    <button
+                      onClick={() => handleCompleteTask(task.id)}
+                      className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Complete</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => openEditModal(task)}
+                    className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </>
@@ -533,54 +457,52 @@ export const Tasks: React.FC = () => {
 
       {/* Create Task Modal */}
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create New Task">
-        <form onSubmit={handleCreateTask} className="flex flex-col gap-5">
+        <form onSubmit={handleCreateTask} className="flex flex-col gap-4 text-left">
           <Input
-            id="taskTitle"
             label="Task Title"
             type="text"
-            placeholder="e.g. Update onboarding forms API"
+            placeholder="e.g. Design Landing Page Wireframes"
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
+            required
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-sm font-semibold text-slate-700">Priority</label>
-              <select
-                value={formPriority}
-                onChange={(e) => setFormPriority(e.target.value as any)}
-                className="w-full h-[52px] bg-white border border-slate-200 rounded-xl px-4 outline-none text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
+          <div className="flex flex-col gap-1 text-left">
+            <label className="text-xs font-semibold text-slate-700">Priority</label>
+            <select
+              value={formPriority}
+              onChange={(e) => setFormPriority(e.target.value as any)}
+              className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-sm font-semibold text-slate-700">Status</label>
-              <select
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as any)}
-                className="w-full h-[52px] bg-white border border-slate-200 rounded-xl px-4 outline-none text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
-              >
-                <option value="Todo">Todo</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
+          <div className="flex flex-col gap-1 text-left">
+            <label className="text-xs font-semibold text-slate-700">Status</label>
+            <select
+              value={formStatus}
+              onChange={(e) => setFormStatus(e.target.value as any)}
+              className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
+            >
+              <option value="Todo">Todo</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
           </div>
 
           <Input
-            id="taskDueDate"
             label="Due Date"
             type="date"
             value={formDueDate}
             onChange={(e) => setFormDueDate(e.target.value)}
+            required
           />
 
-          <div className="flex items-center gap-3 mt-2">
-            <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
             <Button type="submit">Create Task</Button>
@@ -590,54 +512,52 @@ export const Tasks: React.FC = () => {
 
       {/* Edit Task Modal */}
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Task">
-        <form onSubmit={handleEditTask} className="flex flex-col gap-5">
+        <form onSubmit={handleEditTask} className="flex flex-col gap-4 text-left">
           <Input
-            id="editTaskTitle"
             label="Task Title"
             type="text"
-            placeholder="e.g. Update onboarding forms API"
+            placeholder="e.g. Design Landing Page Wireframes"
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
+            required
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-sm font-semibold text-slate-700">Priority</label>
-              <select
-                value={formPriority}
-                onChange={(e) => setFormPriority(e.target.value as any)}
-                className="w-full h-[52px] bg-white border border-slate-200 rounded-xl px-4 outline-none text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
+          <div className="flex flex-col gap-1 text-left">
+            <label className="text-xs font-semibold text-slate-700">Priority</label>
+            <select
+              value={formPriority}
+              onChange={(e) => setFormPriority(e.target.value as any)}
+              className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <label className="text-sm font-semibold text-slate-700">Status</label>
-              <select
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as any)}
-                className="w-full h-[52px] bg-white border border-slate-200 rounded-xl px-4 outline-none text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
-              >
-                <option value="Todo">Todo</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
+          <div className="flex flex-col gap-1 text-left">
+            <label className="text-xs font-semibold text-slate-700">Status</label>
+            <select
+              value={formStatus}
+              onChange={(e) => setFormStatus(e.target.value as any)}
+              className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
+            >
+              <option value="Todo">Todo</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
           </div>
 
           <Input
-            id="editTaskDueDate"
             label="Due Date"
             type="date"
             value={formDueDate}
             onChange={(e) => setFormDueDate(e.target.value)}
+            required
           />
 
-          <div className="flex items-center gap-3 mt-2">
-            <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)}>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button type="button" variant="secondary" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
             <Button type="submit">Save Changes</Button>

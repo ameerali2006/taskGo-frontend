@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   Menu,
   X,
@@ -10,8 +10,6 @@ import {
   Bell,
   Search,
   ChevronDown,
-  LineChart,
-  Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,14 +20,13 @@ interface DashboardLayoutProps {
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const menuItems = [
-    { name: "Dashboard", path: "/tasks", icon: LayoutDashboard },
-    // { name: "Tasks", path: "/tasks", icon: CheckSquare },
-    { name: "Analytics", path: "/tasks", icon: LineChart },
-    // { name: "Settings", path: "/tasks", icon: Settings },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Tasks", path: "/tasks", icon: CheckSquare },
   ];
 
   const handleLogout = async () => {
@@ -83,17 +80,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           </div>
 
           {/* Menu Navigation */}
-          <nav className="flex flex-col gap-1 text-left">
-            {menuItems.map((item, index) => {
+          <nav className="flex flex-col gap-1.5 text-left">
+            {menuItems.map((item) => {
               const Icon = item.icon;
-              // Make first item active for demo layout logic
-              const isActive = index === 0;
+              const isActive = location.pathname === item.path;
               return (
                 <Link
-                  key={index}
+                  key={item.path}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     isActive
                       ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"

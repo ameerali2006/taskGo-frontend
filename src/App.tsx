@@ -4,6 +4,7 @@ import { store } from "./redux/store";
 import { AuthProvider } from "./context/AuthContext";
 import { Signup } from "./pages/Signup";
 import { Login } from "./pages/Login";
+import { Dashboard } from "./pages/Dashboard";
 import { Tasks } from "./pages/Tasks";
 import { ErrorPage } from "./pages/ErrorPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -20,7 +21,17 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
 
-          {/* Protected tasks dashboard route */}
+          {/* Protected dashboard analytics route */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected tasks management route */}
           <Route
             path="/tasks"
             element={
@@ -31,7 +42,7 @@ function App() {
           />
 
           {/* Default redirect funnel */}
-          <Route path="/" element={<Navigate to="/tasks" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           
           {/* Error pages / Fallback routes */}
           <Route path="/500" element={<ErrorPage type="500" />} />
