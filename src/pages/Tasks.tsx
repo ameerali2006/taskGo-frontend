@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 import { TaskService } from "../services/task.service";
 import type { Task } from "../services/task.service";
+import { useSocket } from "../hooks/useSocket";
 import toast from "react-hot-toast";
 
 export const Tasks: React.FC = () => {
+  const { socket } = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,6 +61,38 @@ export const Tasks: React.FC = () => {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  // Real-time Socket.IO synchronization listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTaskCreated = (newTask: Task) => {
+      setTasks((prevTasks) => {
+        if (prevTasks.some((t) => t.id === newTask.id)) return prevTasks;
+        return [newTask, ...prevTasks];
+      });
+    };
+
+    const handleTaskUpdated = (updatedTask: Task) => {
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+      );
+    };
+
+    const handleTaskDeleted = (data: { id: string }) => {
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== data.id));
+    };
+
+    socket.on("task-created", handleTaskCreated);
+    socket.on("task-updated", handleTaskUpdated);
+    socket.on("task-deleted", handleTaskDeleted);
+
+    return () => {
+      socket.off("task-created", handleTaskCreated);
+      socket.off("task-updated", handleTaskUpdated);
+      socket.off("task-deleted", handleTaskDeleted);
+    };
+  }, [socket]);
 
   const openCreateModal = () => {
     setFormTitle("");

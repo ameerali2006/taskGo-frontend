@@ -12,10 +12,12 @@ import { InsightsSection } from "../components/analytics/InsightsSection";
 import { AnalyticsSkeleton } from "../components/analytics/AnalyticsSkeleton";
 import { AnalyticsEmptyState } from "../components/analytics/AnalyticsEmptyState";
 import { useNavigate } from "react-router-dom";
+import { useSocket } from "../hooks/useSocket";
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { socket } = useSocket();
   const [analytics, setAnalytics] = useState<TaskAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +38,25 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     loadAnalytics();
   }, []);
+
+  // Real-time socket sync for Dashboard analytics
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTaskChange = () => {
+      loadAnalytics();
+    };
+
+    socket.on("task-created", handleTaskChange);
+    socket.on("task-updated", handleTaskChange);
+    socket.on("task-deleted", handleTaskChange);
+
+    return () => {
+      socket.off("task-created", handleTaskChange);
+      socket.off("task-updated", handleTaskChange);
+      socket.off("task-deleted", handleTaskChange);
+    };
+  }, [socket]);
 
   const handleNavigateToTasks = () => {
     navigate("/tasks");
