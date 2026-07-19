@@ -1,7 +1,7 @@
 import React, { createContext, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-import { setUser, removeUser, setLoading } from "../redux/authSlice";
+import { setAuth, setUser, removeUser, setLoading } from "../redux/authSlice";
 import type { User } from "../redux/authSlice";
 import { AuthService } from "../services/auth.service";
 import type { RegisterUserDTO, LoginUserDTO } from "../services/auth.service";
@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await AuthService.signup(data);
       if (response.success && response.data) {
-        dispatch(setUser(response.data));
+        dispatch(setAuth({ user: response.data, accessToken: response.accessToken }));
       } else {
         throw new Error(response.message || "Failed to sign up");
       }
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await AuthService.login(data);
       if (response.success && response.data) {
-        dispatch(setUser(response.data));
+        dispatch(setAuth({ user: response.data, accessToken: response.accessToken }));
       } else {
         throw new Error(response.message || "Invalid credentials");
       }

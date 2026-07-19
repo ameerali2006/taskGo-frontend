@@ -6,6 +6,8 @@ interface CreateAxiosClientOptions {
   refreshTokenEndpoint: string;
   loginRedirect: () => void;
   removeAuthAction: () => void;
+  getToken?: () => string | null;
+  setAccessTokenAction?: (token: string | null) => void;
 }
 
 export function createAxiosClient({
@@ -13,6 +15,8 @@ export function createAxiosClient({
   refreshTokenEndpoint,
   loginRedirect,
   removeAuthAction,
+  getToken,
+  setAccessTokenAction,
 }: CreateAxiosClientOptions): AxiosInstance {
   const client = axios.create({
     baseURL,
@@ -39,6 +43,10 @@ export function createAxiosClient({
   // Request Interceptor
   client.interceptors.request.use(
     (config) => {
+      const token = getToken ? getToken() : null;
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
       return config;
     },
     (error) => {
@@ -48,7 +56,12 @@ export function createAxiosClient({
 
   // Response Interceptor
   client.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      if (response.data && response.data.accessToken && setAccessTokenAction) {
+        setAccessTokenAction(response.data.accessToken);
+      }
+      return response;
+    },
     async (error: AxiosError) => {
       const originalRequest = error.config;
       if (!originalRequest) {
@@ -58,18 +71,19 @@ export function createAxiosClient({
       // Avoid infinite loop if refresh token request itself fails
       if (originalRequest.url?.includes(refreshTokenEndpoint)) {
         isRefreshing = false;
+        if (setAccessTokenAction) {
+          setAccessTokenAction(null);
+        }
         removeAuthAction();
         loginRedirect();
         return Promise.reject(error);
       }
 
       const responseStatus = error.response?.status;
-      const responseData = error.response?.data as any;
 
       // Handle 401 Unauthorized / Token Expired
       if (
         responseStatus === 401 &&
-        responseData?.message === "Token expired" &&
         !(originalRequest as any)._retry
       ) {
         (originalRequest as any)._retry = true;
@@ -90,12 +104,18 @@ export function createAxiosClient({
 
         try {
           // POST call to refresh token endpoint
-          await client.post(refreshTokenEndpoint);
+          const res = await client.post(refreshTokenEndpoint);
+          if (res.data?.accessToken && setAccessTokenAction) {
+            setAccessTokenAction(res.data.accessToken);
+          }
           isRefreshing = false;
           processQueue(null);
           return client(originalRequest);
         } catch (refreshError) {
           isRefreshing = false;
+          if (setAccessTokenAction) {
+            setAccessTokenAction(null);
+          }
           processQueue(refreshError);
           removeAuthAction();
           loginRedirect();
