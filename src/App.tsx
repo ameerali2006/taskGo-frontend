@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
-import { store } from "./redux/store";
+import { store, persistor } from "./redux/store";
+import { PersistGate } from "redux-persist/integration/react";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./socket/SocketProvider";
 import { Signup } from "./pages/Signup";
@@ -15,7 +16,8 @@ import "./App.css";
 function App() {
   return (
     <Provider store={store}>
-      <AuthProvider>
+      <PersistGate loading={null} persistor={persistor}>
+        <AuthProvider>
         <SocketProvider>
           <Router>
             <Routes>
@@ -66,7 +68,8 @@ function App() {
             }}
           />
         </SocketProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </PersistGate>
     </Provider>
   );
 }
