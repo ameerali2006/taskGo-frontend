@@ -10,6 +10,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Tasks } from "./pages/Tasks";
 import { ErrorPage } from "./pages/ErrorPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { PublicRoute } from "./components/PublicRoute";
 import { Toaster } from "react-hot-toast";
 import "./App.css";
 
@@ -22,8 +23,22 @@ function App() {
           <Router>
             <Routes>
               {/* Public authentication routes */}
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/login" element={<Login />} />
+              <Route
+                path="/signup"
+                element={
+                  <PublicRoute>
+                    <Signup />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
+              />
 
               {/* Protected dashboard analytics route */}
               <Route

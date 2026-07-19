@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -9,18 +8,8 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { Mail, Lock, Sparkles, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Invalid email format"),
-  password: z
-    .string()
-    .min(1, "Password is required"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { loginSchema, type LoginFormData } from "../utils/validation";
+import { getErrorMessage } from "../utils/error";
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -37,15 +26,14 @@ export const Login: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const res=await login(data);
-      console.log(res)
+      await login(data);
       toast.success("Welcome back!");
-      navigate("/tasks");
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
-      console.log(error)
-      toast.error(error.message || "Invalid credentials. Please try again.");
+      toast.error(getErrorMessage(error, "Invalid email or password. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,7 +175,7 @@ export const Login: React.FC = () => {
               </Link>
             </div>
 
-            <Button type="submit" isLoading={isSubmitting}>
+            <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
               Log In
             </Button>
           </form>

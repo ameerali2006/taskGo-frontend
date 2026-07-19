@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -9,35 +8,8 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { User, Mail, Phone, Lock, Sparkles, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-
-const signupSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Name must be at least 3 characters")
-    .max(50, "Name must be at most 50 characters"),
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Invalid email format"),
-  phone: z
-    .string()
-    .min(1, "Phone number is required")
-    .length(10, "Phone number must be exactly 10 digits")
-    .regex(/^\d+$/, "Phone number must contain only numbers"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/\d/, "Password must contain at least one number")
-    .regex(/[@$!%*?&#]/, "Password must contain at least one special character"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type SignupFormData = z.infer<typeof signupSchema>;
+import { signupSchema, type SignupFormData } from "../utils/validation";
+import { getErrorMessage } from "../utils/error";
 
 export const Signup: React.FC = () => {
   const { signUp } = useAuth();
@@ -54,14 +26,15 @@ export const Signup: React.FC = () => {
   });
 
   const onSubmit = async (data: SignupFormData) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const { confirmPassword, ...signupData } = data;
       await signUp(signupData);
       toast.success("Account created successfully!");
-      navigate("/tasks");
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
-      toast.error(error.message || "Failed to create account. Please try again.");
+      toast.error(getErrorMessage(error, "Failed to create account. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -216,7 +189,7 @@ export const Signup: React.FC = () => {
               {...register("confirmPassword")}
             />
 
-            <Button type="submit" isLoading={isSubmitting} className="mt-2">
+            <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting} className="mt-2">
               Create Account
             </Button>
           </form>

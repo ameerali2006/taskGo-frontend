@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
@@ -19,11 +21,17 @@ import { TaskService } from "../services/task.service";
 import type { Task } from "../services/task.service";
 import { useSocket } from "../hooks/useSocket";
 import toast from "react-hot-toast";
+import { taskFormSchema, type TaskFormData } from "../utils/validation";
+import { getErrorMessage } from "../utils/error";
 
 export const Tasks: React.FC = () => {
   const { socket } = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+
+  // Minimum selectable date string for date picker (YYYY-MM-DD)
+  const todayString = new Date().toISOString().split("T")[0];
 
   // Search, Filters & Sort State
   const [search, setSearch] = useState("");
@@ -36,11 +44,23 @@ export const Tasks: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
 
-  // Form Fields State
-  const [formTitle, setFormTitle] = useState("");
-  const [formPriority, setFormPriority] = useState<"Low" | "Medium" | "High">("Medium");
-  const [formStatus, setFormStatus] = useState<"Todo" | "In Progress" | "Completed">("Todo");
-  const [formDueDate, setFormDueDate] = useState("");
+  // React Hook Form for Create Modal
+  const createForm = useForm<TaskFormData>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      title: "",
+      priority: "Medium",
+      status: "Todo",
+      dueDate: "",
+    },
+    mode: "onTouched",
+  });
+
+  // React Hook Form for Edit Modal
+  const editForm = useForm<TaskFormData>({
+    resolver: zodResolver(taskFormSchema),
+    mode: "onTouched",
+  });
 
   const loadTasks = async () => {
     try {
@@ -52,7 +72,7 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to load tasks");
       }
     } catch (error: any) {
-      console.error("Failed to load tasks", error);
+      toast.error(getErrorMessage(error, "Failed to load tasks"));
     } finally {
       setLoading(false);
     }
@@ -95,40 +115,34 @@ export const Tasks: React.FC = () => {
   }, [socket]);
 
   const openCreateModal = () => {
-    setFormTitle("");
-    setFormPriority("Medium");
-    setFormStatus("Todo");
-    setFormDueDate("");
+    createForm.reset({
+      title: "",
+      priority: "Medium",
+      status: "Todo",
+      dueDate: "",
+    });
     setIsCreateOpen(true);
   };
 
   const openEditModal = (task: Task) => {
     setCurrentTask(task);
-    setFormTitle(task.title);
-    setFormPriority(task.priority);
-    setFormStatus(task.status);
-    setFormDueDate(task.dueDate);
+    editForm.reset({
+      title: task.title,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate,
+    });
     setIsEditOpen(true);
   };
 
   // Create handler
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formTitle.trim()) {
-      toast.error("Task title is required");
-      return;
-    }
-    if (!formDueDate) {
-      toast.error("Due date is required");
-      return;
-    }
-
+  const handleCreateTask = async (data: TaskFormData) => {
     try {
       const response = await TaskService.createTask({
-        title: formTitle.trim(),
-        priority: formPriority,
-        status: formStatus,
-        dueDate: formDueDate,
+        title: data.title,
+        priority: data.priority,
+        status: data.status,
+        dueDate: data.dueDate,
         description: "",
       } as any);
 
@@ -140,30 +154,19 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to create task");
       }
     } catch (error: any) {
-      console.log(error);
-      toast.error("Failed to save task to server");
+      toast.error(getErrorMessage(error, "Failed to create task"));
     }
   };
 
   // Edit handler
-  const handleEditTask = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditTask = async (data: TaskFormData) => {
     if (!currentTask) return;
-    if (!formTitle.trim()) {
-      toast.error("Task title is required");
-      return;
-    }
-    if (!formDueDate) {
-      toast.error("Due date is required");
-      return;
-    }
-
     try {
       const response = await TaskService.updateTask(currentTask.id, {
-        title: formTitle.trim(),
-        priority: formPriority,
-        status: formStatus,
-        dueDate: formDueDate,
+        title: data.title,
+        priority: data.priority,
+        status: data.status,
+        dueDate: data.dueDate,
       });
 
       if (response.success) {
@@ -174,7 +177,7 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to update task");
       }
     } catch (error: any) {
-      toast.error("Failed to save changes to server");
+      toast.error(getErrorMessage(error, "Failed to save changes"));
     }
   };
 
@@ -183,6 +186,7 @@ export const Tasks: React.FC = () => {
     const confirmDelete = window.confirm("Are you sure you want to delete this task?");
     if (!confirmDelete) return;
 
+    setDeletingTaskId(id);
     try {
       const response = await TaskService.deleteTask(id);
       if (response.success) {
@@ -192,7 +196,9 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to delete task");
       }
     } catch (error: any) {
-      toast.error("Failed to delete task on server");
+      toast.error(getErrorMessage(error, "Failed to delete task"));
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -207,7 +213,7 @@ export const Tasks: React.FC = () => {
         toast.error(response.message || "Failed to complete task");
       }
     } catch (error: any) {
-      toast.error("Failed to complete task on server");
+      toast.error(getErrorMessage(error, "Failed to complete task"));
     }
   };
 
@@ -477,10 +483,11 @@ export const Tasks: React.FC = () => {
                   </button>
                   <button
                     onClick={() => handleDeleteTask(task.id)}
-                    className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1 cursor-pointer"
+                    disabled={deletingTaskId === task.id}
+                    className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete</span>
+                    <span>{deletingTaskId === task.id ? "Deleting..." : "Delete"}</span>
                   </button>
                 </div>
               </div>
@@ -491,110 +498,136 @@ export const Tasks: React.FC = () => {
 
       {/* Create Task Modal */}
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create New Task">
-        <form onSubmit={handleCreateTask} className="flex flex-col gap-4 text-left">
+        <form onSubmit={createForm.handleSubmit(handleCreateTask)} className="flex flex-col gap-4 text-left">
           <Input
             label="Task Title"
             type="text"
             placeholder="e.g. Design Landing Page Wireframes"
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
-            required
+            error={createForm.formState.errors.title?.message}
+            {...createForm.register("title")}
           />
 
           <div className="flex flex-col gap-1 text-left">
             <label className="text-xs font-semibold text-slate-700">Priority</label>
             <select
-              value={formPriority}
-              onChange={(e) => setFormPriority(e.target.value as any)}
+              {...createForm.register("priority")}
               className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
             >
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
             </select>
+            {createForm.formState.errors.priority?.message && (
+              <span className="text-xs text-red-500 font-medium">
+                {createForm.formState.errors.priority.message}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1 text-left">
             <label className="text-xs font-semibold text-slate-700">Status</label>
             <select
-              value={formStatus}
-              onChange={(e) => setFormStatus(e.target.value as any)}
+              {...createForm.register("status")}
               className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
             >
               <option value="Todo">Todo</option>
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
+            {createForm.formState.errors.status?.message && (
+              <span className="text-xs text-red-500 font-medium">
+                {createForm.formState.errors.status.message}
+              </span>
+            )}
           </div>
 
           <Input
             label="Due Date"
             type="date"
-            value={formDueDate}
-            onChange={(e) => setFormDueDate(e.target.value)}
-            required
+            min={todayString}
+            error={createForm.formState.errors.dueDate?.message}
+            {...createForm.register("dueDate")}
           />
 
           <div className="flex justify-end gap-3 mt-4">
             <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Create Task</Button>
+            <Button
+              type="submit"
+              isLoading={createForm.formState.isSubmitting}
+              disabled={createForm.formState.isSubmitting}
+            >
+              Create Task
+            </Button>
           </div>
         </form>
       </Modal>
 
       {/* Edit Task Modal */}
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Task">
-        <form onSubmit={handleEditTask} className="flex flex-col gap-4 text-left">
+        <form onSubmit={editForm.handleSubmit(handleEditTask)} className="flex flex-col gap-4 text-left">
           <Input
             label="Task Title"
             type="text"
             placeholder="e.g. Design Landing Page Wireframes"
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
-            required
+            error={editForm.formState.errors.title?.message}
+            {...editForm.register("title")}
           />
 
           <div className="flex flex-col gap-1 text-left">
             <label className="text-xs font-semibold text-slate-700">Priority</label>
             <select
-              value={formPriority}
-              onChange={(e) => setFormPriority(e.target.value as any)}
+              {...editForm.register("priority")}
               className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
             >
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
             </select>
+            {editForm.formState.errors.priority?.message && (
+              <span className="text-xs text-red-500 font-medium">
+                {editForm.formState.errors.priority.message}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1 text-left">
             <label className="text-xs font-semibold text-slate-700">Status</label>
             <select
-              value={formStatus}
-              onChange={(e) => setFormStatus(e.target.value as any)}
+              {...editForm.register("status")}
               className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-left"
             >
               <option value="Todo">Todo</option>
               <option value="In Progress">In Progress</option>
               <option value="Completed">Completed</option>
             </select>
+            {editForm.formState.errors.status?.message && (
+              <span className="text-xs text-red-500 font-medium">
+                {editForm.formState.errors.status.message}
+              </span>
+            )}
           </div>
 
           <Input
             label="Due Date"
             type="date"
-            value={formDueDate}
-            onChange={(e) => setFormDueDate(e.target.value)}
-            required
+            min={todayString}
+            error={editForm.formState.errors.dueDate?.message}
+            {...editForm.register("dueDate")}
           />
 
           <div className="flex justify-end gap-3 mt-4">
             <Button type="button" variant="secondary" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button
+              type="submit"
+              isLoading={editForm.formState.isSubmitting}
+              disabled={editForm.formState.isSubmitting}
+            >
+              Save Changes
+            </Button>
           </div>
         </form>
       </Modal>
